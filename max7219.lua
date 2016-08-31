@@ -142,8 +142,8 @@ local function commit()
   --    ...
   --    module: 3 register: 8 data: 0
   for i = 1, numberOfColumns do
-    local module = ((i - 1) / 8) + 1
-    local register = ((i - 1) % 8) + 1
+    local module = math.floor(((i - 1) / 8) + 1)
+    local register = math.floor(((i - 1) % 8) + 1)
     sendByte(module, register, columns[i])
   end
 end
