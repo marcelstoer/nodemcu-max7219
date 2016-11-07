@@ -240,6 +240,8 @@ function M.setIntensity(intensity)
   end
 end
 
+-- Turns the display on or off.
+-- shutdown: true=turn off, false=turn on
 function M.shutdown(shutdown)
 	local MAX7219_REG_SHUTDOWN = 0x0C
 	
@@ -252,5 +254,44 @@ function M.shutdown(shutdown)
 	end
 end
 
+
+function M.write7segment(text)
+    local tab = {}
+
+    local lenNoDots = text:gsub("%.", ""):len()
+    
+    -- pad with spaces to turn off not required digits
+    if (lenNoDots < (8 * numberOfModules)) then
+    	text = text .. string.rep(" ", (8 * numberOfModules) - lenNoDots)
+    end
+    
+    local wasdot = false
+    
+    local font7seg = require("font7seg")
+    
+    for i=string.len(text), 1, -1 do
+    		
+    		local currentChar = text:sub(i,i)
+    		
+    		if (currentChar == ".") then
+    			wasdot = true
+    		else
+	    		if (wasdot) then
+	    			wasdot = false
+	    			-- take care of the decimal point
+	    			table.insert(tab, font7seg.GetChar(currentChar) + 0x80)
+	    		else
+	    			table.insert(tab, font7seg.GetChar(currentChar))
+	    		end    		
+    		end
+    end
+    
+    package.loaded[font7seg] = nil
+		_G[font7seg] = nil
+    font7seg = nil
+    
+		-- todo 1 table per module is required
+    max7219.write( { tab } , { invert = false })
+end
 
 return M
