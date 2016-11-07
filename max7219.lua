@@ -180,6 +180,10 @@ function M.setup(config)
   local MAX7219_REG_DISPLAYTEST = 0x0F
 
   spi.setup(1, spi.MASTER, spi.CPOL_LOW, spi.CPHA_LOW, 16, 8)
+  -- Must NOT be done _before_ spi.setup() because that function configures all HSPI* pins for SPI. Hence,
+  -- if you want to use one of the HSPI* pins for slave select spi.setup() would overwrite that.
+  gpio.mode(slaveSelectPin, gpio.OUTPUT)
+  gpio.write(slaveSelectPin, gpio.HIGH)
 
   for i = 1, numberOfModules do
     sendByte(i, MAX7219_REG_SCANLIMIT, 7)
@@ -188,10 +192,6 @@ function M.setup(config)
     sendByte(i, MAX7219_REG_INTENSITY, 1)
     sendByte(i, MAX7219_REG_SHUTDOWN, 1)
   end
-
-  -- Must NOT be done _before_ spi.setup() because that function configures all HSPI* pins for SPI. Hence,
-  -- if you want to use one of the HSPI* pins for slave select spi.setup() would overwrite that.
-  gpio.mode(slaveSelectPin, gpio.OUTPUT)
 
   M.clear()
 end
