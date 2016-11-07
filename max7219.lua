@@ -230,4 +230,27 @@ function M.write(chars, transformation)
   commit()
 end
 
+-- Sets the brightness of the display.
+-- intensity: 0x00 - 0x0F (0 - 15)
+function M.setIntensity(intensity)
+	local MAX7219_REG_INTENSITY = 0x0A
+  
+  for i = 1, numberOfModules do
+    sendByte(i, MAX7219_REG_INTENSITY, intensity)
+  end
+end
+
+function M.shutdown(shutdown)
+	local MAX7219_REG_SHUTDOWN = 0x0C
+	
+	for i = 1, numberOfModules do
+		if (shutdown) then 
+			sendByte(i, MAX7219_REG_SHUTDOWN, 0) 
+		else 
+			sendByte(i, MAX7219_REG_SHUTDOWN, 1) 
+		end
+	end
+end
+
+
 return M
