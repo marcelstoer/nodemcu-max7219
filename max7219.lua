@@ -20,15 +20,9 @@ local slaveSelectPin
 -- numberOfModules * 8 bytes for the char representation, left-to-right
 local columns = {}
 
-dofile("reverseBytes.lua")
-
 --------------------------------------------------------------------------------
 -- Local/private functions
 --------------------------------------------------------------------------------
-local reverse = function(byte)
-  -- tables in Lua are 1-based -> the reverse of 0 is at index 1
-  return reverseBytes[byte + 1]
-end
 
 local function sendByte(module, register, data)
   -- out("module: " .. module .. " register: " .. register .. " data: " .. data)
@@ -172,7 +166,12 @@ end
 
 function M.write(chars, transformation)
   local transformation = transformation or {}
+  local revByte
 
+  if transformation.invert == true then
+    revByte = require("reverseBytes")
+  end
+  
   local c = {}
   for i = 1, #chars do
     local char = chars[i]
@@ -186,11 +185,17 @@ function M.write(chars, transformation)
         -- module offset + inverted register + 1
         -- to produce 8, 7 .. 1, 16, 15 ... 9, 24, 23 ...
         local index = ((i - 1) * 8) + 8 - k + 1
-        c[index] = reverse(v)
+        c[index] = revByte.GetReverseByte(v)
       else
         table.insert(c, v)
       end
     end
+  end
+
+  if (revByte ~= nil) then
+    package.loaded[revByte] = nil
+    _G[revByte] = nil
+    revByte = nil
   end
 
   columns = c
@@ -200,8 +205,8 @@ end
 -- Sets the brightness of the display.
 -- intensity: 0x00 - 0x0F (0 - 15)
 function M.setIntensity(intensity)
-	local MAX7219_REG_INTENSITY = 0x0A
-  
+  local MAX7219_REG_INTENSITY = 0x0A
+
   for i = 1, numberOfModules do
     sendByte(i, MAX7219_REG_INTENSITY, intensity)
   end
@@ -210,59 +215,57 @@ end
 -- Turns the display on or off.
 -- shutdown: true=turn off, false=turn on
 function M.shutdown(shutdown)
-	local MAX7219_REG_SHUTDOWN = 0x0C
-	
-	for i = 1, numberOfModules do
-		if (shutdown) then 
-			sendByte(i, MAX7219_REG_SHUTDOWN, 0) 
-		else 
-			sendByte(i, MAX7219_REG_SHUTDOWN, 1) 
-		end
-	end
+  local MAX7219_REG_SHUTDOWN = 0x0C
+    
+  for i = 1, numberOfModules do
+    if (shutdown) then 
+      sendByte(i, MAX7219_REG_SHUTDOWN, 0) 
+    else 
+      sendByte(i, MAX7219_REG_SHUTDOWN, 1) 
+    end
+  end
 end
 
--- add scrolling support
-function M.write7segment(text, padLeft)
-    local tab = {}
+-- todo: add scrolling support
+-- Writes the specified text to the 7-Segment display.
+-- If rAlign is true, the text is written right-aligned on the display.
+function M.write7segment(text, rAlign)
+  local tab = {}
+  local lenNoDots = text:gsub("%.", ""):len()
 
-    local lenNoDots = text:gsub("%.", ""):len()
-    
-    -- pad with spaces to turn off not required digits
-    if (lenNoDots < (8 * numberOfModules)) then
-    	if (padLeft) then
-    		text = string.rep(" ", (8 * numberOfModules) - lenNoDots) .. text
-    	else
-    		text = text .. string.rep(" ", (8 * numberOfModules) - lenNoDots)
-    	end
+  -- pad with spaces to turn off not required digits
+  if (lenNoDots < (8 * numberOfModules)) then
+    if (rAlign) then
+      text = string.rep(" ", (8 * numberOfModules) - lenNoDots) .. text
+    else
+      text = text .. string.rep(" ", (8 * numberOfModules) - lenNoDots)
     end
-    
-    local wasdot = false
-    
-    local font7seg = require("font7seg")
-    
-    for i=string.len(text), 1, -1 do
-    		
-    		local currentChar = text:sub(i,i)
-    		
-    		if (currentChar == ".") then
-    			wasdot = true
-    		else
-	    		if (wasdot) then
-	    			wasdot = false
-	    			-- take care of the decimal point
-	    			table.insert(tab, font7seg.GetChar(currentChar) + 0x80)
-	    		else
-	    			table.insert(tab, font7seg.GetChar(currentChar))
-	    		end    		
-    		end
+  end
+
+  local wasdot = false
+  local font7seg = require("font7seg")
+
+  for i = string.len(text), 1, -1 do
+    local currentChar = text:sub(i,i)
+
+    if (currentChar == ".") then
+      wasdot = true
+    else
+      if (wasdot) then
+        wasdot = false
+        -- take care of the decimal point
+        table.insert(tab, font7seg.GetChar(currentChar) + 0x80)
+      else
+        table.insert(tab, font7seg.GetChar(currentChar))
+      end
     end
-    
-    package.loaded[font7seg] = nil
-		_G[font7seg] = nil
-    font7seg = nil
-    
-		-- todo 1 table per module is required
-    max7219.write( { tab } , { invert = false })
+  end
+
+  package.loaded[font7seg] = nil
+  _G[font7seg] = nil
+  font7seg = nil
+
+  max7219.write({ tab }, { invert = false })
 end
 
 return M

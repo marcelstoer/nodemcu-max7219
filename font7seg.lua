@@ -73,8 +73,8 @@ digits["."] = 0x80
 digits["°"] = 0x63
 
 function M.GetChar(char)
-		local r = digits[char]
-		if (r == nil) then return digits["_"] else return r end
+  local r = digits[char]
+  if (r == nil) then return digits["_"] else return r end
 end
 
 return M
