@@ -70,11 +70,11 @@ digits["Y"] = 0x3b
 digits["Z"] = 0x6d
 digits[","] = 0x80
 digits["."] = 0x80
-digits["°"] = 0x63
+digits["Â°"] = 0x63
 
 function M.GetChar(char)
   local r = digits[char]
-  if (r == nil) then return digits["_"] else return r end
+  return r == nil and digits["_"] or r
 end
 
 return M

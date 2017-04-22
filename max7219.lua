@@ -20,6 +20,12 @@ local slaveSelectPin
 -- numberOfModules * 8 bytes for the char representation, left-to-right
 local columns = {}
 
+local MAX7219_REG_DECODEMODE = 0x09
+local MAX7219_REG_INTENSITY = 0x0A
+local MAX7219_REG_SCANLIMIT = 0x0B
+local MAX7219_REG_SHUTDOWN = 0x0C
+local MAX7219_REG_DISPLAYTEST = 0x0F
+
 --------------------------------------------------------------------------------
 -- Local/private functions
 --------------------------------------------------------------------------------
@@ -123,6 +129,7 @@ end
 --               - numberOfModules*
 --               - slaveSelectPin*, ESP8266 pin which is connected to CS of the MAX7219
 --               - debug
+--               - intensitiy, 0x00 - 0x0F (0 - 15)
 function M.setup(config)
   local config = config or {}
 
@@ -134,12 +141,6 @@ function M.setup(config)
 
   out("number of modules: " .. numberOfModules .. ", SS pin: " .. slaveSelectPin)
 
-  local MAX7219_REG_DECODEMODE = 0x09
-  local MAX7219_REG_INTENSITY = 0x0A
-  local MAX7219_REG_SCANLIMIT = 0x0B
-  local MAX7219_REG_SHUTDOWN = 0x0C
-  local MAX7219_REG_DISPLAYTEST = 0x0F
-
   spi.setup(1, spi.MASTER, spi.CPOL_LOW, spi.CPHA_LOW, 16, 8)
   -- Must NOT be done _before_ spi.setup() because that function configures all HSPI* pins for SPI. Hence,
   -- if you want to use one of the HSPI* pins for slave select spi.setup() would overwrite that.
@@ -150,7 +151,8 @@ function M.setup(config)
     sendByte(i, MAX7219_REG_SCANLIMIT, 7)
     sendByte(i, MAX7219_REG_DECODEMODE, 0x00)
     sendByte(i, MAX7219_REG_DISPLAYTEST, 0)
-    sendByte(i, MAX7219_REG_INTENSITY, 1)
+    -- use 1 as default intensity if not configured
+    sendByte(i, MAX7219_REG_INTENSITY, config.intensity and config.intensity or 1)
     sendByte(i, MAX7219_REG_SHUTDOWN, 1)
   end
 
@@ -171,7 +173,7 @@ function M.write(chars, transformation)
   if transformation.invert == true then
     revByte = require("reverseBytes")
   end
-  
+
   local c = {}
   for i = 1, #chars do
     local char = chars[i]
@@ -205,8 +207,6 @@ end
 -- Sets the brightness of the display.
 -- intensity: 0x00 - 0x0F (0 - 15)
 function M.setIntensity(intensity)
-  local MAX7219_REG_INTENSITY = 0x0A
-
   for i = 1, numberOfModules do
     sendByte(i, MAX7219_REG_INTENSITY, intensity)
   end
@@ -215,14 +215,10 @@ end
 -- Turns the display on or off.
 -- shutdown: true=turn off, false=turn on
 function M.shutdown(shutdown)
-  local MAX7219_REG_SHUTDOWN = 0x0C
-    
+  local shutdownReg = shutdown and 0 or 1
+
   for i = 1, numberOfModules do
-    if (shutdown) then 
-      sendByte(i, MAX7219_REG_SHUTDOWN, 0) 
-    else 
-      sendByte(i, MAX7219_REG_SHUTDOWN, 1) 
-    end
+    sendByte(i, MAX7219_REG_SHUTDOWN, shutdownReg)
   end
 end
 
