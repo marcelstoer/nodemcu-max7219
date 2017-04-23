@@ -41,4 +41,12 @@ max7219.write7segment("32.5°C")
 max7219.write7segment("HELLO", true)
 ```
 
+For using scrolling:
+```Lua
+max7219 = require("max7219_ticker")
+max7219.setup({numberOfModules = 4, slaveSelectPin = 8})
+max7219.Print("Hello World!    ")
+```
+
+
 All missing features are tracked as issues on GitHub.
